@@ -60,23 +60,15 @@ Prerequisites
 
 Nastavení a spuštění
 1.	Naklonujte repozitář:
-bash
-Zkopírovat kód
 git clone https://github.com/your-username/reservation-system-backend.git
 cd reservation-system-backend
 2.	Nastavte PostgreSQL databázi a upravte soubor application.properties:
-properties
-Zkopírovat kód
 spring.datasource.url=jdbc:postgresql://localhost:5432/your_database
 spring.datasource.username=your_username
 spring.datasource.password=your_password
 3.	Vygenerujte SSL certifikát:
-bash
-Zkopírovat kód
 keytool -genkey -alias mycert -keyalg RSA -keystore keystore.jks -keysize 2048
 4.	Spusťte aplikaci:
-bash
-Zkopírovat kód
 mvn spring-boot:run
 Aplikace bude běžet na https://localhost:8443.
 
