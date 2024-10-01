@@ -1,27 +1,27 @@
 package com.example.reservation_system.models;
 
 public class Bar extends Serv {
-    private String cuisineType;
+    private String cuisine_type;
     private Serv service;
     private int capacity;
     private String location;
 
     // Konstruktor
-    public Bar(Long id, String name, Serv service, String cuisineType, int capacity, String location) {
+    public Bar(Long id, String name, Serv service, String cuisine_type, int capacity, String location) {
         super(id, name);
         this.service = service;
-        this.cuisineType = cuisineType;
+        this.cuisine_type = cuisine_type;
         this.capacity = capacity;
         this.location = location;
     }
 
     // Gettery a Settery
     public String getCuisineType() {
-        return cuisineType;
+        return cuisine_type;
     }
 
-    public void setCuisineType(String cuisineType) {
-        this.cuisineType = cuisineType;
+    public void setCuisineType(String cuisine_type) {
+        this.cuisine_type = cuisine_type;
     }
 
     public int getCapacity() {

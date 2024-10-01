@@ -37,14 +37,25 @@ public class LiftRepository {
         });
     }
 
+    public Optional<Lift> findByServiceId(Long serviceId) {
+        String sql = "SELECT * FROM lifts WHERE service_id = ?";
+        return jdbcTemplate.query(sql, new Object[]{serviceId}, rs -> {
+            if (rs.next()) {
+                return Optional.of(mapRowToLift(rs, rs.getRow()));
+            } else {
+                return Optional.empty();
+            }
+        });
+    }
+
     public int save(Lift lift) {
         String sql = "INSERT INTO lifts (name, service_id, capacity, status) VALUES (?, ?, ?, ?)";
-        return jdbcTemplate.update(sql, lift.getServiceName(), lift.getService().getId(), lift.getCapacity(), lift.getStatus());
+        return jdbcTemplate.update(sql, lift.getServiceName(), lift.getService().getServiceId(), lift.getCapacity(), lift.getStatus());
     }
 
     public int update(Lift lift) {
         String sql = "UPDATE lifts SET name = ?, service_id = ?, capacity = ?, status = ? WHERE id = ?";
-        return jdbcTemplate.update(sql, lift.getServiceName(), lift.getService().getId(), lift.getCapacity(), lift.getStatus(), lift.getId());
+        return jdbcTemplate.update(sql, lift.getServiceName(), lift.getService().getServiceId(), lift.getCapacity(), lift.getStatus(), lift.getServiceId());
     }
 
     public int deleteById(Long id) {
@@ -55,5 +66,10 @@ public class LiftRepository {
     private Lift mapRowToLift(ResultSet rs, int rowNum) throws SQLException {
         Serv service = servRepository.findById(rs.getLong("service_id")).orElse(null);
         return new Lift(rs.getLong("id"), rs.getString("name"), service, rs.getInt("capacity"), rs.getString("status"));
+    }
+
+    public int deleteAllLifts() {
+        String sql = "DELETE * FROM lifts";
+        return jdbcTemplate.update(sql);
     }
 }

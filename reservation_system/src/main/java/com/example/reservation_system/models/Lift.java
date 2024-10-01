@@ -1,5 +1,7 @@
 package com.example.reservation_system.models;
 
+import java.util.Optional;
+
 public class Lift extends Serv {
     private int capacity;
     private String status;

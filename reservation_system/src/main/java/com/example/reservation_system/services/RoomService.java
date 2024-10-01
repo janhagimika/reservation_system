@@ -31,7 +31,7 @@ public class RoomService {
     public int updateRoom(Long id, Room room) {
         Optional<Room> existingRoom = roomRepository.findById(id);
         if (existingRoom.isPresent()) {
-            room.setId(id);
+            room.setServiceId(id);
             return roomRepository.update(room);
         } else {
             return 0;

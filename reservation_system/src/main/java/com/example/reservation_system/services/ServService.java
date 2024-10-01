@@ -2,6 +2,7 @@ package com.example.reservation_system.services;
 
 import com.example.reservation_system.models.Serv;
 import com.example.reservation_system.repositories.ServRepository;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -24,19 +25,20 @@ public class ServService {
         return servRepository.findById(id);
     }
 
-    public int createService(Serv serv) {
+    public Serv createService(Serv serv) {
         return servRepository.save(serv);
     }
 
     public int updateService(Long id, Serv serv) {
         Optional<Serv> existingService = servRepository.findById(id);
         if (existingService.isPresent()) {
-            serv.setId(id);
+            serv.setServiceId(id);
             return servRepository.update(serv);
         } else {
             return 0;
         }
     }
+
 
     public int deleteService(Long id) {
         return servRepository.deleteById(id);

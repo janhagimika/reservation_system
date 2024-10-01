@@ -3,6 +3,7 @@ package com.example.reservation_system.controllers;
 import com.example.reservation_system.models.Lift;
 import com.example.reservation_system.services.LiftService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -30,12 +31,14 @@ public class LiftController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     @PostMapping
     public ResponseEntity<String> createLift(@RequestBody Lift lift) {
         liftService.createLift(lift);
         return ResponseEntity.ok("Lanovka vytvořena úspěšně.");
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     @PutMapping("/{id}")
     public ResponseEntity<String> updateLift(@PathVariable Long id, @RequestBody Lift lift) {
         if (liftService.updateLift(id, lift) > 0) {
@@ -44,6 +47,7 @@ public class LiftController {
         return ResponseEntity.notFound().build();
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteLift(@PathVariable Long id) {
         if (liftService.deleteLift(id) > 0) {

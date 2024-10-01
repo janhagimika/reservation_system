@@ -1,23 +1,22 @@
 package com.example.reservation_system.models;
 
 public class Serv {
-    private Long id;
+    private Long serviceId;
     private String serviceName;
-    private String availability;
 
     // Konstruktor
-    public Serv(Long id, String serviceName) {
-        this.id = id;
+    public Serv(Long serviceId, String serviceName) {
+        this.serviceId = serviceId;
         this.serviceName = serviceName;
     }
 
     // Gettery a Settery
-    public Long getId() {
-        return id;
+    public Long getServiceId() {
+        return serviceId;
     }
 
-    public void setId(Long id) {
-        this.id = id;
+    public void setServiceId(Long serviceId) {
+        this.serviceId = serviceId;
     }
 
     public String getServiceName() {
@@ -27,5 +26,6 @@ public class Serv {
     public void setServiceName(String serviceName) {
         this.serviceName = serviceName;
     }
+
 
 }

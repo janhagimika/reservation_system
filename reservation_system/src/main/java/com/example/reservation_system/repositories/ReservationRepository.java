@@ -36,6 +36,11 @@ public class ReservationRepository {
         });
     }
 
+    public List<Reservation> findByUserId(Long userId) {
+        String sql = "SELECT * FROM reservations WHERE user_id = ? ORDER BY start_time DESC";
+        return jdbcTemplate.query(sql, new Object[]{userId}, this::mapRowToReservation);
+    }
+
     public List<Reservation> findAll() {
         String sql = "SELECT * FROM reservations";
         return jdbcTemplate.query(sql, this::mapRowToReservation);
@@ -43,12 +48,12 @@ public class ReservationRepository {
 
     public int save(Reservation reservation) {
         String sql = "INSERT INTO reservations (user_id, service_id, start_time, end_time) VALUES (?, ?, ?, ?)";
-        return jdbcTemplate.update(sql, reservation.getUser().getId(), reservation.getService().getId(), reservation.getStartTime(), reservation.getEndTime());
+        return jdbcTemplate.update(sql, reservation.getUser().getId(), reservation.getService().getServiceId(), reservation.getStartTime(), reservation.getEndTime());
     }
 
     public int update(Reservation reservation) {
         String sql = "UPDATE reservations SET user_id = ?, service_id = ?, reservation_time = ? WHERE id = ?";
-        return jdbcTemplate.update(sql, reservation.getUser().getId(), reservation.getService().getId(), reservation.getStartTime(), reservation.getEndTime(), reservation.getId());
+        return jdbcTemplate.update(sql, reservation.getUser().getId(), reservation.getService().getServiceId(), reservation.getStartTime(), reservation.getEndTime(), reservation.getId());
     }
 
     public int deleteById(Long id) {
@@ -61,7 +66,7 @@ public class ReservationRepository {
         Serv service = servRepository.findById(rs.getLong("service_id")).orElse(null);
         LocalDateTime startTime = rs.getObject("start_time", LocalDateTime.class);
         LocalDateTime endTime = rs.getObject("end_time", LocalDateTime.class);
-        return new Reservation(rs.getLong("id"), user, service, rs.getString("detail") , startTime, endTime);
+        return new Reservation(rs.getLong("id"), user, service, startTime, endTime);
     }
 
     public boolean isServiceAvailable(Long serviceId, LocalDateTime startTime, LocalDateTime endTime) {
@@ -71,13 +76,53 @@ public class ReservationRepository {
         return count == 0; // Pokud neexistuje žádná kolidující rezervace, služba je dostupná
     }
 
-    public boolean isUserAlreadyBookedForRoom(Long userId, LocalDateTime startTime, LocalDateTime endTime) {
-        String sql = "SELECT COUNT(*) FROM reservations r " +
-                "JOIN services s ON r.service_id = s.id " +
-                "WHERE r.user_id = ? AND s.service_name LIKE 'Ubytování%' " +
-                "AND r.start_time < ? AND r.end_time > ?";
+    public boolean hasOverlappingReservation(Long userId, Long serviceId, LocalDateTime startTime, LocalDateTime endTime) {
+        String sql = "SELECT COUNT(*) FROM reservations " +
+                "WHERE user_id = ? AND service_id = ? " +
+                "AND ((start_time < ? AND end_time > ?) " +  // Check for overlapping
+                "OR (start_time < ? AND end_time > ?))";
 
-        Integer count = jdbcTemplate.queryForObject(sql, Integer.class, userId, endTime, startTime);
+        Integer count = jdbcTemplate.queryForObject(sql, new Object[]{
+                userId, serviceId, startTime, endTime, endTime, startTime
+        }, Integer.class);
+
         return count != null && count > 0;
     }
+
+    public int deleteAllReservations() {
+        String sql = "DELETE * FROM reservations";
+        return jdbcTemplate.update(sql);
+    }
+
+    public List<Reservation> findReservationsByServiceAndDateRange(Long serviceId, LocalDateTime startDate, LocalDateTime endDate) {
+        String sql = "SELECT * FROM reservations WHERE service_id = ? " +
+                "AND (start_time BETWEEN ? AND ? OR end_time BETWEEN ? AND ?)";
+
+        // Fetch the service entity using its ID
+        Optional<Serv> optionalService = servRepository.findById(serviceId);
+        if (!optionalService.isPresent()) {
+            throw new RuntimeException("Service not found for ID: " + serviceId);
+        }
+        Serv service = optionalService.get();
+
+        return jdbcTemplate.query(sql, new Object[]{serviceId, startDate, endDate, startDate, endDate},
+                (rs, rowNum) -> {
+                    // Fetch user from the user repository
+                    Optional<User> optionalUser = userRepository.findById(rs.getLong("user_id"));
+                    if (!optionalUser.isPresent()) {
+                        throw new RuntimeException("User not found for ID: " + rs.getLong("user_id"));
+                    }
+                    User user = optionalUser.get();
+
+                    return new Reservation(
+                            rs.getLong("id"),
+                            user,
+                            service,
+                            rs.getTimestamp("start_time").toLocalDateTime(),
+                            rs.getTimestamp("end_time").toLocalDateTime()
+                    );
+                }
+        );
+    }
+
 }

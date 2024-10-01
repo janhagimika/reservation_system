@@ -25,13 +25,14 @@ public class BarService {
     }
 
     public int createBar(Bar bar) {
+        
         return barRepository.save(bar);
     }
 
     public int updateBar(Long id, Bar bar) {
         Optional<Bar> existingBar = barRepository.findById(id);
         if (existingBar.isPresent()) {
-            bar.setId(id);
+            bar.setServiceId(id);
             return barRepository.update(bar);
         } else {
             return 0;

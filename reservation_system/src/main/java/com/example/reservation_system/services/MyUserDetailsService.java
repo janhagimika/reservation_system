@@ -18,7 +18,7 @@ public class MyUserDetailsService implements UserDetailsService {
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         User user = userRepository.findByUsername(username);
         if (user == null) {
-            throw new UsernameNotFoundException("Uživatel nebyl nalezen");
+            throw new UsernameNotFoundException("Uživatel nebyl nalezen.");
         }
         return org.springframework.security.core.userdetails.User
                 .withUsername(user.getUsername())

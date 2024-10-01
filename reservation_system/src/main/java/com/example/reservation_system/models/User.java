@@ -22,6 +22,11 @@ public class User {
         this.phoneNumber = phoneNumber;
     }
 
+    public User(Long id) {
+        this.id = id;
+
+    }
+
     // Gettery a Settery
     public Long getId() {
         return id;

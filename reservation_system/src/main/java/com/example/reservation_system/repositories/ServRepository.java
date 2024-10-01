@@ -2,11 +2,15 @@ package com.example.reservation_system.repositories;
 
 import com.example.reservation_system.models.Serv;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 @Repository
@@ -34,14 +38,21 @@ public class ServRepository {
         return jdbcTemplate.query(sql, this::mapRowToServ);
     }
 
-    public int save(Serv serv) {
+    public Serv save(Serv serv) {
         String sql = "INSERT INTO services (service_name) VALUES (?)";
-        return jdbcTemplate.update(sql, serv.getServiceName());
+        KeyHolder keyHolder = new GeneratedKeyHolder();
+        jdbcTemplate.update(connection -> {
+            PreparedStatement ps = connection.prepareStatement(sql, new String[] { "id" });
+            ps.setString(1, serv.getServiceName());
+            return ps;
+        }, keyHolder);
+        serv.setServiceId(Objects.requireNonNull(keyHolder.getKey()).longValue());
+        return serv;
     }
 
     public int update(Serv serv) {
-        String sql = "UPDATE services SET service_name = ? WHERE id = ?";
-        return jdbcTemplate.update(sql, serv.getServiceName(), serv.getId());
+        String sql = "UPDATE services SET service_name = ?, service_type = ? WHERE id = ?";
+        return jdbcTemplate.update(sql, serv.getServiceName(), serv.getServiceId());
     }
 
     public int deleteById(Long id) {
@@ -54,5 +65,10 @@ public class ServRepository {
                 rs.getString("service_name")
         );
         return serv;
+    }
+
+    public int deleteAllServs() {
+        String sql = "DELETE * FROM services";
+        return jdbcTemplate.update(sql);
     }
 }

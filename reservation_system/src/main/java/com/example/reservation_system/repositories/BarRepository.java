@@ -37,14 +37,25 @@ public class BarRepository {
         });
     }
 
+    public Optional<Bar> findByServiceId(Long serviceId) {
+        String sql = "SELECT * FROM bars WHERE service_id = ?";
+        return jdbcTemplate.query(sql, new Object[]{serviceId}, rs -> {
+            if (rs.next()) {
+                return Optional.of(mapRowToBar(rs, rs.getRow()));
+            } else {
+                return Optional.empty();
+            }
+        });
+    }
+
     public int save(Bar bar) {
         String sql = "INSERT INTO bars (name, service_id, cuisine_type, capacity, location) VALUES (?, ?, ?, ?, ?)";
-        return jdbcTemplate.update(sql, bar.getServiceName(), bar.getService().getId(), bar.getCuisineType(), bar.getCapacity(), bar.getLocation());
+        return jdbcTemplate.update(sql, bar.getServiceName(), bar.getService().getServiceId(), bar.getCuisineType(), bar.getCapacity(), bar.getLocation());
     }
 
     public int update(Bar bar) {
         String sql = "UPDATE bars SET name = ?, service_id = ?, cuisine_type = ?, capacity = ?, location = ? WHERE id = ?";
-        return jdbcTemplate.update(sql, bar.getServiceName(), bar.getService().getId(), bar.getCuisineType(), bar.getCapacity(), bar.getLocation(), bar.getId());
+        return jdbcTemplate.update(sql, bar.getServiceName(), bar.getService().getServiceId(), bar.getCuisineType(), bar.getCapacity(), bar.getLocation(), bar.getServiceId());
     }
 
     public int deleteById(Long id) {
@@ -55,5 +66,10 @@ public class BarRepository {
     private Bar mapRowToBar(ResultSet rs, int rowNum) throws SQLException {
         Serv service = servRepository.findById(rs.getLong("service_id")).orElse(null);
         return new Bar(rs.getLong("id"), rs.getString("name"), service, rs.getString("cuisine_type"), rs.getInt("capacity"), rs.getString("location"));
+    }
+
+    public int deleteAllBars() {
+        String sql = "DELETE * FROM bars";
+        return jdbcTemplate.update(sql);
     }
 }

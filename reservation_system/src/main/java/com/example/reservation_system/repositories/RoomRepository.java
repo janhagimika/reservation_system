@@ -37,14 +37,25 @@ public class RoomRepository {
         });
     }
 
+    public Optional<Room> findByServiceId(Long serviceId) {
+        String sql = "SELECT * FROM rooms WHERE service_id = ?";
+        return jdbcTemplate.query(sql, new Object[]{serviceId}, rs -> {
+            if (rs.next()) {
+                return Optional.of(mapRowToRoom(rs, rs.getRow()));
+            } else {
+                return Optional.empty();
+            }
+        });
+    }
+
     public int save(Room room) {
         String sql = "INSERT INTO rooms (name, service_id, capacity, price_per_night) VALUES (?, ?, ?, ?)";
-        return jdbcTemplate.update(sql, room.getServiceName(), room.getService().getId(), room.getCapacity(), room.getPricePerNight());
+        return jdbcTemplate.update(sql, room.getServiceName(), room.getService().getServiceId(), room.getCapacity(), room.getPricePerNight());
     }
 
     public int update(Room room) {
         String sql = "UPDATE rooms SET name = ?, service_id = ?, capacity = ?, price_per_night = ? WHERE id = ?";
-        return jdbcTemplate.update(sql, room.getServiceName(), room.getService().getId(), room.getCapacity(), room.getPricePerNight(), room.getId());
+        return jdbcTemplate.update(sql, room.getServiceName(), room.getService().getServiceId(), room.getCapacity(), room.getPricePerNight(), room.getServiceId());
     }
 
     public int deleteById(Long id) {
@@ -55,5 +66,10 @@ public class RoomRepository {
     private Room mapRowToRoom(ResultSet rs, int rowNum) throws SQLException {
         Serv service = servRepository.findById(rs.getLong("service_id")).orElse(null);
         return new Room(rs.getLong("id"), rs.getString("name"),service, rs.getInt("capacity"), rs.getDouble("price_per_night"));
+    }
+
+    public int deleteAllRooms() {
+        String sql = "DELETE * FROM rooms";
+        return jdbcTemplate.update(sql);
     }
 }

@@ -1,6 +1,7 @@
 package com.example.reservation_system.repositories;
 
 import com.example.reservation_system.models.User;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -50,7 +51,7 @@ public class UserRepository {
         });
     }
     public List<User> findAll() {
-        String sql = "SELECT * FROM users";
+        String sql = "SELECT * FROM users ORDER BY id ASC";
         return jdbcTemplate.query(sql, this::mapRowToUser);
     }
     public int save(User user) {
@@ -59,14 +60,20 @@ public class UserRepository {
     }
 
     public int update(User user) {
-        String sql = "UPDATE users SET username = ?, password = ?, email = ?, role = ? WHERE id = ?";
-        return jdbcTemplate.update(sql, user.getUsername(), user.getPassword(), user.getEmail(), user.getRole(), user.getId());
+        String sql = "UPDATE users SET username = ?, password = ?, first_name = ?, surname = ?, email = ?, role = ?, phone_number = ? WHERE id = ?";
+        return jdbcTemplate.update(sql, user.getUsername(), user.getPassword(), user.getFirstName(), user.getSurname(), user.getEmail(), user.getRole(), user.getPhoneNumber(), user.getId());
     }
 
     public int deleteById(Long id) {
         String sql = "DELETE FROM users WHERE id = ?";
         return jdbcTemplate.update(sql, id);
     }
+
+    public void updatePassword(Long userId, String newPassword) {
+        String sql = "UPDATE users SET password = ? WHERE id = ?";
+        jdbcTemplate.update(sql, newPassword, userId);
+    }
+
 
     private User mapRowToUser(ResultSet rs, int rowNum) throws SQLException {
         User user = new User(rs.getLong("id"),
@@ -79,5 +86,10 @@ public class UserRepository {
                 rs.getString("phone_number")
         );
         return user;
+    }
+
+    public int deleteAllUsers() {
+        String sql = "DELETE * FROM users";
+        return jdbcTemplate.update(sql);
     }
 }

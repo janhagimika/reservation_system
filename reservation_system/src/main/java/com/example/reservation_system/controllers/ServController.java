@@ -3,6 +3,7 @@ package com.example.reservation_system.controllers;
 import com.example.reservation_system.models.Serv;
 import com.example.reservation_system.services.ServService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -30,12 +31,14 @@ public class ServController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     @PostMapping
-    public ResponseEntity<String> createService(@RequestBody Serv serv) {
-        servService.createService(serv);
-        return ResponseEntity.ok("Servis vytvořen úspěšně.");
+    public ResponseEntity<Serv> createService(@RequestBody Serv serv) {
+        Serv createdServ = servService.createService(serv);
+        return ResponseEntity.ok(createdServ);
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     @PutMapping("/{id}")
     public ResponseEntity<String> updateService(@PathVariable Long id, @RequestBody Serv serv) {
         if (servService.updateService(id, serv) > 0) {
@@ -44,6 +47,7 @@ public class ServController {
         return ResponseEntity.notFound().build();
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteService(@PathVariable Long id) {
         if (servService.deleteService(id) > 0) {
