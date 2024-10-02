@@ -1,4 +1,4 @@
-# reservation_system
+# Reservation_system_backend
 Reservation System Backend
 Tento backend slouží k řízení rezervačního systému a obsahuje logiku pro správu uživatelů, autentizaci, CRUD operace pro různé komodity (pokoje, lanovky, bary) a správu rezervací. Umožňuje uživatelům rezervovat dostupné časy pro vybrané komodity a spravovat jejich rezervace.
 Funkcionality
