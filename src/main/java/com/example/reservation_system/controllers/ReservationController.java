@@ -46,7 +46,7 @@ public class ReservationController {
         return ResponseEntity.ok(statistics);
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','USER')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     @PostMapping("/available-times")
     public Map<String, List<LocalDateTime>> getAvailableTimes(@RequestBody AvailableTimeRequest request) {
         Long serviceId = request.getServiceId(); // Extract from request body
@@ -64,7 +64,7 @@ public class ReservationController {
         return availableTimes;
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','USER')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     @PostMapping
     public ResponseEntity<String> createReservation(@RequestBody Map<String, Object> requestBody) {
         ReservationRequest request = new ReservationRequest();
