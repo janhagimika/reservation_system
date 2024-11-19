@@ -16,6 +16,7 @@ import java.util.*;
 public class ReservationService {
 
     private final UserRepository userRepository;
+    private final ReservationTransactionService reservationTransactionService;
 
     private final ServRepository servRepository;
     private final RoomRepository roomRepository;
@@ -27,9 +28,10 @@ public class ReservationService {
     private String openTimeLift = "08:00";
     private String closeTimeLift = "18:00";
 
-    public ReservationService(ReservationRepository reservationRepository, UserRepository userRepository, ServRepository servRepository, RoomRepository roomRepository, BarRepository barRepository, LiftRepository liftRepository) {
+    public ReservationService(ReservationRepository reservationRepository, UserRepository userRepository, ReservationTransactionService reservationTransactionService, ServRepository servRepository, RoomRepository roomRepository, BarRepository barRepository, LiftRepository liftRepository) {
         this.reservationRepository = reservationRepository;
         this.userRepository = userRepository;
+        this.reservationTransactionService = reservationTransactionService;
         this.servRepository = servRepository;
         this.roomRepository = roomRepository;
         this.barRepository = barRepository;
@@ -174,49 +176,24 @@ public class ReservationService {
 
         return availableTimes;
     }
+
     public Reservation createReservation(Reservation reservation, String serviceType) {
-        // Kontrola, zda je uživatel přihlášen a má právo na rezervaci
-        if (reservation.getUser() == null) {
-            throw new IllegalStateException("Rezervace musí být přidělena přihlášenému uživateli.");
-        }
-
-        if (!canBeReserved(reservation, serviceType)) {
-            throw new IllegalStateException("Rezervace je mimo provozní dobu.");
-        }
-
-        if (hasOverlappingReservation(reservation.getUser().getId(), reservation.getService().getServiceId(),
-                reservation.getStartTime(), reservation.getEndTime())) {
-            throw new IllegalStateException("Tato komodita je už Vámi rezervována pro tuto dobu.");
-        }
-
-        // Kontrola dostupnosti služby (pokoj, bar, lanovka)
-        if (!isServiceAvailable(reservation.getService(), reservation.getStartTime(),reservation.getEndTime())) {
-            throw new IllegalStateException("Služba není ve zvoleném čase dostupná.");
-        }
-        // Odeslání potvrzovacího e-mailu
-
+        // Perform validations
         User user = userRepository.findById(reservation.getUser().getId())
                 .orElseThrow(() -> new IllegalArgumentException("Uživatel nebyl nalezen."));
         Serv service = servRepository.findById(reservation.getService().getServiceId())
                 .orElseThrow(() -> new IllegalArgumentException("Servis nebyl nalezen"));
 
-        reservation.setUser(user);
-        reservation.setService(service);
+        // Call the transactional method in another bean
 
-        String emailBody = String.format("Vážený pane/Vážená paní, %s, Vaše rezervace na %s od %s do %s byla právě potvrzena.",
-                reservation.getUser().getUsername(),
-                reservation.getService().getServiceName(),
-                reservation.getStartTime(),
-                reservation.getEndTime());
-        System.out.println(emailBody);
-         //didn't want to register there uselessly
-        /*emailService.sendReservationConfirmation(
-                reservation.getUser().getEmail(),
-                "Reservation Confirmation",
-                emailBody
-        );*/
-        return reservationRepository.save(reservation);
+        // Send the email
+        //sendConfirmationEmail(savedReservation);
+
+        return reservationTransactionService.createReservationInternal(
+                reservation, user, service, reservationRepository
+        );
     }
+
     private boolean isServiceAvailable(Serv service, LocalDateTime startTime,LocalDateTime endTime) {
         return reservationRepository.isServiceAvailable(service.getServiceId(), startTime, endTime);
     }
