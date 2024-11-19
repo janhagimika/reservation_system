@@ -19,7 +19,6 @@ public class BarController {
     public BarController(BarService barService) {
         this.barService = barService;
     }
-
     @GetMapping
     public List<Bar> getAllBars() {
         return barService.getAllBars();
