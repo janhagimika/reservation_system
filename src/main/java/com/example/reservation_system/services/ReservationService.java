@@ -22,13 +22,15 @@ public class ReservationService {
     private final RoomRepository roomRepository;
     private final BarRepository barRepository;
     private final LiftRepository liftRepository;
+
+    private final EmailService emailService;
     private final ReservationRepository reservationRepository;
     private String openTimeBar = "12:00";
     private String closeTimeBar = "23:30";
     private String openTimeLift = "08:00";
     private String closeTimeLift = "18:00";
 
-    public ReservationService(ReservationRepository reservationRepository, UserRepository userRepository, ReservationTransactionService reservationTransactionService, ServRepository servRepository, RoomRepository roomRepository, BarRepository barRepository, LiftRepository liftRepository) {
+    public ReservationService(ReservationRepository reservationRepository, UserRepository userRepository, ReservationTransactionService reservationTransactionService, ServRepository servRepository, RoomRepository roomRepository, BarRepository barRepository, LiftRepository liftRepository, EmailService emailService) {
         this.reservationRepository = reservationRepository;
         this.userRepository = userRepository;
         this.reservationTransactionService = reservationTransactionService;
@@ -36,6 +38,7 @@ public class ReservationService {
         this.roomRepository = roomRepository;
         this.barRepository = barRepository;
         this.liftRepository = liftRepository;
+        this.emailService = emailService;
     }
     // Method to check if a service can be reserved
     public boolean canBeReserved(Reservation reservation, String serviceType) {
@@ -180,32 +183,47 @@ public class ReservationService {
     public Reservation createReservation(Reservation reservation, String serviceType) {
         // Perform validations
         User user = userRepository.findById(reservation.getUser().getId())
-                .orElseThrow(() -> new IllegalArgumentException("Uživatel nebyl nalezen."));
+                .orElseThrow(() -> new IllegalStateException("Uživatel nebyl nalezen."));
         Serv service = servRepository.findById(reservation.getService().getServiceId())
-                .orElseThrow(() -> new IllegalArgumentException("Servis nebyl nalezen"));
+                .orElseThrow(() -> new IllegalStateException("Servis nebyl nalezen"));
 
         // Check if the reservation overlaps with an existing one
         if (hasOverlappingReservation(user.getId(), service.getServiceId(), reservation.getStartTime(), reservation.getEndTime())) {
-            throw new IllegalArgumentException("The reservation overlaps with an existing one.");
+            throw new IllegalStateException("Rezervace se překrývá s již existující rezervací.");
         }
 
         // Check if the service is available during the requested time
         if (!isServiceAvailable(service, reservation.getStartTime(), reservation.getEndTime())) {
-            throw new IllegalArgumentException("The service is not available during the requested time.");
+            throw new IllegalStateException("Služba není dostupná během požadovaného času.");
         }
 
         // Check if the reservation is within the allowed business hours
         if (!canBeReserved(reservation, serviceType)) {
-            throw new IllegalArgumentException("The reservation does not fall within the business hours.");
+            throw new IllegalStateException("Rezervace nespadá do otevíracích hodin.");
         }
-        // Call the transactional method in another bean to not impact performance
 
-        // Send the email
-        //sendConfirmationEmail(savedReservation);
-
-        return reservationTransactionService.createReservationInternal(
+        Reservation savedReservation = reservationTransactionService.createReservationInternal(
                 reservation, user, service, reservationRepository
         );
+
+        // Send email notification
+
+        // Trigger email sending asynchronously
+        try {
+            String emailBody = String.format(
+                    "Rezervace potvrzena: %s, od %s do %s.",
+                    service.getServiceName(),
+                    reservation.getStartTime(),
+                    reservation.getEndTime()
+            );
+            emailService.sendReservationConfirmation(user.getEmail(), "Potvrzení rezervace", emailBody);
+        } catch (Exception e) {
+            System.err.println("Chyba při spuštění emailu: " + e.getMessage());
+            // Optionally log or handle errors
+        }
+
+        return savedReservation;
+
     }
 
     private boolean isServiceAvailable(Serv service, LocalDateTime startTime,LocalDateTime endTime) {
