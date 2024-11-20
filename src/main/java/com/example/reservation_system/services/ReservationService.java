@@ -184,7 +184,21 @@ public class ReservationService {
         Serv service = servRepository.findById(reservation.getService().getServiceId())
                 .orElseThrow(() -> new IllegalArgumentException("Servis nebyl nalezen"));
 
-        // Call the transactional method in another bean
+        // Check if the reservation overlaps with an existing one
+        if (hasOverlappingReservation(user.getId(), service.getServiceId(), reservation.getStartTime(), reservation.getEndTime())) {
+            throw new IllegalArgumentException("The reservation overlaps with an existing one.");
+        }
+
+        // Check if the service is available during the requested time
+        if (!isServiceAvailable(service, reservation.getStartTime(), reservation.getEndTime())) {
+            throw new IllegalArgumentException("The service is not available during the requested time.");
+        }
+
+        // Check if the reservation is within the allowed business hours
+        if (!canBeReserved(reservation, serviceType)) {
+            throw new IllegalArgumentException("The reservation does not fall within the business hours.");
+        }
+        // Call the transactional method in another bean to not impact performance
 
         // Send the email
         //sendConfirmationEmail(savedReservation);
