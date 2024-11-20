@@ -74,7 +74,7 @@ public class ReservationController {
         request.setServiceType((String) requestBody.get("serviceType"));
         try {
             reservationService.createReservation(request.getReservation(), request.getServiceType());  // Call service method with reservation and type
-            return ResponseEntity.ok("Rezervace vytvořena úspěšně.");
+            return ResponseEntity.ok("Rezervace vytvořena úspěšně. Zkontrolujte potvrzení pomocí Vašeho emailu, pokud Vám email nepřišel, zkontrolujte jeho platnost nebo změnte na Vašem profilu.");
         } catch (IllegalStateException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
