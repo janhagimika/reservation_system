@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -32,6 +33,17 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
             @Param("endDate") LocalDateTime endDate
     );
 
+    // Search by name only
+    @Query("SELECT r FROM Reservation r " +
+            "JOIN r.user u " +
+            "WHERE LOWER(u.firstName) LIKE LOWER(CONCAT('%', :name, '%')) " +
+            "OR LOWER(u.surname) LIKE LOWER(CONCAT('%', :name, '%'))")
+    List<Reservation> findReservationsByName(@Param("name") String name);
+
+    // Search by start date only
+    @Query("SELECT r FROM Reservation r " +
+            "WHERE DATE(r.startTime) = :date ORDER BY r.startTime ASC")
+    List<Reservation> findReservationsByStartDate(@Param("date") LocalDate date);
 
     @Modifying
     @Transactional

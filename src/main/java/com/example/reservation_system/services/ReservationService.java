@@ -76,40 +76,8 @@ public class ReservationService {
         this.closeTimeLift = businessHours.get("closeLift");
     }
 
-    public List<Map<String, Object>> getAllReservationsWithCommodities() {
-        List<Reservation> reservations = reservationRepository.findAll();
-        List<Map<String, Object>> reservationDetails = new ArrayList<>();
-
-        for (Reservation reservation : reservations) {
-            Map<String, Object> reservationMap = new HashMap<>();
-            reservationMap.put("reservation", reservation);
-
-            // Get the service ID from the reservation
-            Long serviceId = reservation.getService().getServiceId();
-
-            // Try to fetch the commodity from each repository
-            Object commodity = null;
-
-            // Check rooms repository
-            commodity = roomRepository.findByServiceId(serviceId).orElse(null);
-
-            // If not found in rooms, check bars repository
-            if (commodity == null) {
-                commodity = barRepository.findByServiceId(serviceId).orElse(null);
-            }
-
-            // If not found in bars, check lifts repository
-            if (commodity == null) {
-                commodity = liftRepository.findByServiceId(serviceId).orElse(null);
-            }
-
-            // Add the commodity to the reservation map
-            reservationMap.put("commodity", commodity);
-
-            // Add the map to the details list
-            reservationDetails.add(reservationMap);
-        }
-        return reservationDetails;
+    public List<Reservation> getAllReservations() {
+        return reservationRepository.findAll();
     }
     public List<Reservation> getReservationsByUserId(Long userId) {
         return reservationRepository.findByUserId(userId);
@@ -178,6 +146,16 @@ public class ReservationService {
         }
 
         return availableTimes;
+    }
+
+    // Search by name
+    public List<Reservation> searchByName(String name) {
+        return reservationRepository.findReservationsByName(name);
+    }
+
+    // Search by date
+    public List<Reservation> searchByDate(LocalDate date) {
+        return reservationRepository.findReservationsByStartDate(date);
     }
 
     public Reservation createReservation(Reservation reservation, String serviceType) {

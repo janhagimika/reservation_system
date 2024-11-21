@@ -1,11 +1,16 @@
 package com.example.reservation_system.models;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
+import org.hibernate.annotations.Fetch;
+import org.hibernate.annotations.Type;
 
 import java.util.List;
 
 @Entity
-@Table(name = "\"user\"")
+@Table(name = "\"user\"", indexes = {
+        @Index(name = "idx_user_first_name", columnList = "firstName"),
+        @Index(name = "idx_user_surname", columnList = "surname")
+})
 public class User {
 
     @Id
@@ -29,17 +34,19 @@ public class User {
 
     @NotBlank(message = "Jméno je povinné.")
     @Pattern(regexp = "^[A-Z][a-z]*$", message = "Jméno musí začínat velkým písmenem a obsahovat pouze písmena.")
+    @Column(nullable = false) // Add nullable constraint for consistency
     private String firstName;
 
     @NotBlank(message = "Příjmení je povinné.")
     @Pattern(regexp = "^[A-Z][a-z]*$", message = "Příjmení musí začínat velkým písmenem a obsahovat pouze písmena.")
+    @Column(nullable = false) // Add nullable constraint for consistency
     private String surname;
 
     @NotBlank(message = "Telefonní číslo je povinné.")
     @Pattern(regexp = "^[0-9]{9}$", message = "Telefonní číslo musí obsahovat přesně 9 číslic.")
     private String phoneNumber;
 
-    @OneToMany(mappedBy = "user")
+    @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
     private List<Reservation> reservations;
 
     // Default Constructor

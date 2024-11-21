@@ -4,12 +4,14 @@ import com.example.reservation_system.models.AvailableTimeRequest;
 import com.example.reservation_system.models.Reservation;
 import com.example.reservation_system.models.ReservationRequest;
 import com.example.reservation_system.services.ReservationService;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
@@ -28,8 +30,8 @@ public class ReservationController {
 
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     @GetMapping
-    public List<Map<String, Object>> getAllReservations() {
-        return reservationService.getAllReservationsWithCommodities();
+    public List<Reservation> getAllReservations() {
+        return reservationService.getAllReservations();
     }
 
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','USER')")
@@ -44,6 +46,22 @@ public class ReservationController {
     public ResponseEntity<List<Map<String, Object>>> getStatistics() {
         List<Map<String, Object>> statistics = reservationService.getStatistics();
         return ResponseEntity.ok(statistics);
+    }
+
+    // Search by name
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','USER')")
+    @GetMapping("/searchByName")
+    public List<Reservation> searchReservationsByName(
+            @RequestParam(value = "name") String name) {
+        return reservationService.searchByName(name);
+    }
+
+    // Search by date
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','USER')")
+    @GetMapping("/searchByDate")
+    public List<Reservation> searchReservationsByDate(
+            @RequestParam(value = "date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        return reservationService.searchByDate(date);
     }
 
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','USER')")
