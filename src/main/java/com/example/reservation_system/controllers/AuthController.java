@@ -3,13 +3,10 @@ package com.example.reservation_system.controllers;
 import com.example.reservation_system.models.PasswordChangeRequest;
 import com.example.reservation_system.models.RefreshTokenRequest;
 import com.example.reservation_system.models.User;
-import com.example.reservation_system.repositories.UserRepository;
 import com.example.reservation_system.security.JwtUtil;
 import com.example.reservation_system.services.MyUserDetailsService;
 import com.example.reservation_system.services.UserService;
 import io.jsonwebtoken.JwtException;
-import jakarta.transaction.Transactional;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -18,7 +15,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.validation.annotation.Validated;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
@@ -26,7 +22,6 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 @Validated
 @RestController
@@ -34,18 +29,13 @@ import java.util.Optional;
 public class AuthController {
 
     private final UserService userService;
-    private final UserRepository userRepository;
     private final AuthenticationManager authenticationManager;
-    private final PasswordEncoder passwordEncoder;
-
     private final JwtUtil jwtTokenUtil;
     private final MyUserDetailsService userDetailsService;
 
-    public AuthController(UserService userService, UserRepository userRepository, AuthenticationManager authenticationManager, PasswordEncoder passwordEncoder, JwtUtil jwtTokenUtil, MyUserDetailsService userDetailsService) {
+    public AuthController(UserService userService, AuthenticationManager authenticationManager, JwtUtil jwtTokenUtil, MyUserDetailsService userDetailsService) {
         this.userService = userService;
-        this.userRepository = userRepository;
         this.authenticationManager = authenticationManager;
-        this.passwordEncoder = passwordEncoder;
         this.jwtTokenUtil = jwtTokenUtil;
         this.userDetailsService = userDetailsService;
     }
@@ -70,34 +60,18 @@ public class AuthController {
     }
 
     @PreAuthorize("hasAnyRole('USER','MANAGER','ADMIN')")
-    @Transactional
     @PutMapping("user/change-password/{id}")
-    public ResponseEntity<?> changePassword(@PathVariable Long id,@Valid @RequestBody PasswordChangeRequest passwordChangeRequest, Authentication authentication) {
-        // Validate if the user is authenticated and authorized to change their password
-        User authenticatedUser = userService.findByUsername(authentication.getName());
-        if (!authenticatedUser.getId().equals(id)) {
-            return new ResponseEntity<>("Neoprávněný pokus o změnu hesla.", HttpStatus.FORBIDDEN);
+    public ResponseEntity<?> changePassword(@PathVariable Long id, @Valid @RequestBody PasswordChangeRequest passwordChangeRequest, Authentication authentication) {
+        try {
+            String message = userService.changePassword(id, passwordChangeRequest, authentication.getName());
+            return ResponseEntity.ok(message);
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Došlo k chybě při změně hesla.");
         }
-        String username = authentication.getName();
-        Optional<User> userOptional = userRepository.findById(id);
-
-        if (userOptional.isPresent()) {
-            User user = userOptional.get();
-
-            // Verify the old password
-            if (!passwordEncoder.matches(passwordChangeRequest.getOldPassword(), user.getPassword())) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Old password is incorrect.");
-            }
-
-            // Set new password
-            String encodedNewPassword = passwordEncoder.encode(passwordChangeRequest.getNewPassword());
-            userRepository.updatePassword(user.getId(), encodedNewPassword);
-
-            return ResponseEntity.ok("Heslo úspěšně změněno.");
-        }
-
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found.");
     }
+
 
     @PreAuthorize("hasAnyRole('USER','MANAGER','ADMIN')")
     @PutMapping("/users/{id}")

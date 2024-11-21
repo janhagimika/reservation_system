@@ -10,8 +10,6 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @ControllerAdvice
 public class ValidationExceptionHandler {

@@ -2,6 +2,7 @@ package com.example.reservation_system.services;
 
 import com.example.reservation_system.models.Serv;
 import com.example.reservation_system.repositories.ServRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -28,12 +29,18 @@ public class ServService {
         return servRepository.save(serv);
     }
 
-    public void updateService(Long id, Serv updatedService) {
-        servRepository.findById(id).ifPresent(existingService -> {
-            existingService.setServiceName(updatedService.getServiceName());
-            servRepository.save(existingService);
-        });
+    @Transactional
+    public void updateService(Long serviceId, Serv updatedService) {
+        Serv service = servRepository.findByServiceId(serviceId)
+                .orElseThrow(() -> new IllegalArgumentException("Service not found"));
+
+        // Update service details
+        service.setServiceName (updatedService.getServiceName());
+
+        // Save and return updated service
+        servRepository.save(service);
     }
+
 
     public void deleteService(Long id) {
         servRepository.deleteById(id);

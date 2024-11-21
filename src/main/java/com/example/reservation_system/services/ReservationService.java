@@ -5,6 +5,7 @@ import com.example.reservation_system.models.Serv;
 import com.example.reservation_system.models.User;
 import com.example.reservation_system.repositories.*;
 import jakarta.transaction.Transactional;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.time.*;
@@ -16,12 +17,7 @@ import java.util.*;
 public class ReservationService {
 
     private final UserRepository userRepository;
-    private final ReservationTransactionService reservationTransactionService;
-
     private final ServRepository servRepository;
-    private final RoomRepository roomRepository;
-    private final BarRepository barRepository;
-    private final LiftRepository liftRepository;
 
     private final EmailService emailService;
     private final ReservationRepository reservationRepository;
@@ -30,45 +26,13 @@ public class ReservationService {
     private String openTimeLift = "08:00";
     private String closeTimeLift = "18:00";
 
-    public ReservationService(ReservationRepository reservationRepository, UserRepository userRepository, ReservationTransactionService reservationTransactionService, ServRepository servRepository, RoomRepository roomRepository, BarRepository barRepository, LiftRepository liftRepository, EmailService emailService) {
+    public ReservationService(ReservationRepository reservationRepository, UserRepository userRepository, ServRepository servRepository, EmailService emailService) {
         this.reservationRepository = reservationRepository;
         this.userRepository = userRepository;
-        this.reservationTransactionService = reservationTransactionService;
         this.servRepository = servRepository;
-        this.roomRepository = roomRepository;
-        this.barRepository = barRepository;
-        this.liftRepository = liftRepository;
         this.emailService = emailService;
     }
-    // Method to check if a service can be reserved
-    public boolean canBeReserved(Reservation reservation, String serviceType) {
 
-        LocalTime startTime = reservation.getStartTime().toLocalTime();
-        LocalTime endTime = reservation.getEndTime().toLocalTime();
-
-        // Check if the service is a bar or a lift and adjust the validation based on business hours
-        if ("BAR".equals(serviceType)) {
-            return isWithinBusinessHours(startTime, endTime, openTimeBar, closeTimeBar);
-        } else if ("LIFT".equals(serviceType)) {
-            return isWithinBusinessHours(startTime, endTime, openTimeLift, closeTimeLift);
-        }
-        return true; // For other types of services, no specific business hour validation
-    }
-
-    // Helper method to check if a reservation is within business hours
-    private boolean isWithinBusinessHours(LocalTime startTime, LocalTime endTime, String openTime, String closeTime) {
-
-        if (openTime == null || closeTime == null) {
-            throw new IllegalArgumentException("Open or close time cannot be null");
-        }
-        DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_TIME;
-
-        LocalTime open = LocalTime.parse(openTime, formatter);
-        LocalTime close = LocalTime.parse(closeTime, formatter);
-
-        // Validate that the start and end times fall within the opening hours
-        return !startTime.isBefore(open) && !endTime.isAfter(close);
-    }
     public synchronized void updateBusinessHours(Map<String, String> businessHours) {
         this.openTimeBar = businessHours.get("openBar");
         this.closeTimeBar = businessHours.get("closeBar");
@@ -90,18 +54,23 @@ public class ReservationService {
 
         String openTime;
         String closeTime;
-        if (serviceType.equals("BAR")) {
-            openTime = openTimeBar;  // Assuming openTimeBar is "12:00"
-            closeTime = closeTimeBar;  // Assuming closeTimeBar is "23:00"
-        } else if (serviceType.equals("LIFT")) {
-            openTime = openTimeLift;  // Assuming openTimeLift is "08:00"
-            closeTime = closeTimeLift;  // Assuming closeTimeLift is "18:00"
-        } else if (serviceType.equals("ROOM")) {
-            // For rooms, we set openTime and closeTime to span the entire day
-            openTime = "00:00";
-            closeTime = "23:59";
-        } else {
-            throw new IllegalArgumentException("Unsupported service type: " + serviceType);
+        switch (serviceType) {
+            case "BAR" -> {
+                openTime = openTimeBar;  // Assuming openTimeBar is "12:00"
+
+                closeTime = closeTimeBar;  // Assuming closeTimeBar is "23:00"
+            }
+            case "LIFT" -> {
+                openTime = openTimeLift;  // Assuming openTimeLift is "08:00"
+
+                closeTime = closeTimeLift;  // Assuming closeTimeLift is "18:00"
+            }
+            case "ROOM" -> {
+                // For rooms, we set openTime and closeTime to span the entire day
+                openTime = "00:00";
+                closeTime = "23:59";
+            }
+            default -> throw new IllegalArgumentException("Unsupported service type: " + serviceType);
         }
 
         // Initialize available time slots
@@ -122,9 +91,6 @@ public class ReservationService {
 
                 // Check if current time slot overlaps with any existing reservations
                 for (Reservation reservation : reservations) {
-                    LocalDateTime reservationStart = reservation.getStartTime();
-                    LocalDateTime reservationEnd = reservation.getEndTime();
-
                     // Check if the current slot overlaps with any existing reservation
                     if (currentSlot.isBefore(reservation.getEndTime()) && currentSlot.plus(duration).isAfter(reservation.getStartTime())) {
                         isAvailable = false;
@@ -158,12 +124,15 @@ public class ReservationService {
         return reservationRepository.findReservationsByStartDate(date);
     }
 
-    public Reservation createReservation(Reservation reservation, String serviceType) {
+    @Transactional
+    public void createReservation(Reservation reservation, String serviceType) {
         // Perform validations
         User user = userRepository.findById(reservation.getUser().getId())
                 .orElseThrow(() -> new IllegalStateException("Uživatel nebyl nalezen."));
-        Serv service = servRepository.findById(reservation.getService().getServiceId())
-                .orElseThrow(() -> new IllegalStateException("Servis nebyl nalezen"));
+
+        // Lock the service to prevent simultaneous modifications
+        Serv service = servRepository.findByServiceId(reservation.getService().getServiceId())
+                .orElseThrow(() -> new IllegalArgumentException("Service not found"));
 
         // Check if the reservation overlaps with an existing one
         if (hasOverlappingReservation(user.getId(), service.getServiceId(), reservation.getStartTime(), reservation.getEndTime())) {
@@ -180,13 +149,20 @@ public class ReservationService {
             throw new IllegalStateException("Rezervace nespadá do otevíracích hodin.");
         }
 
-        Reservation savedReservation = reservationTransactionService.createReservationInternal(
-                reservation, user, service, reservationRepository
-        );
+        // Set user and service on the reservation
+        reservation.setUser(user);
+        reservation.setService(service);
 
-        // Send email notification
+        // Save the reservation
+        reservationRepository.save(reservation);
 
         // Trigger email sending asynchronously
+        sendEmailAsync(user, service, reservation);
+
+    }
+
+    @Async
+    public void sendEmailAsync(User user, Serv service, Reservation reservation) {
         try {
             String emailBody = String.format(
                     "Rezervace potvrzena: %s, od %s do %s.",
@@ -194,22 +170,53 @@ public class ReservationService {
                     reservation.getStartTime(),
                     reservation.getEndTime()
             );
-            emailService.sendReservationConfirmation(user.getEmail(), "Potvrzení rezervace", emailBody);
+
+            emailService.sendReservationConfirmation(
+                    user.getEmail(),
+                    "Potvrzení rezervace",
+                    emailBody
+            );
         } catch (Exception e) {
-            System.err.println("Chyba při spuštění emailu: " + e.getMessage());
-            // Optionally log or handle errors
+            System.err.println("Chyba při odesílání emailu: " + e.getMessage());
+            // Optionally log the error or notify an admin if needed
         }
-
-        return savedReservation;
-
     }
 
-    private boolean isServiceAvailable(Serv service, LocalDateTime startTime,LocalDateTime endTime) {
+
+    private boolean isServiceAvailable(Serv service, LocalDateTime startTime, LocalDateTime endTime) {
         return reservationRepository.isServiceAvailable(service.getServiceId(), startTime, endTime);
     }
 
     private boolean hasOverlappingReservation(Long userId, Long serviceId, LocalDateTime startTime,LocalDateTime endTime) {
         return reservationRepository.hasOverlappingReservation(userId, serviceId, startTime, endTime);
+    }
+
+    private boolean isWithinBusinessHours(LocalTime startTime, LocalTime endTime, String openTime, String closeTime) {
+
+        if (openTime == null || closeTime == null) {
+            throw new IllegalArgumentException("Open or close time cannot be null");
+        }
+        DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_TIME;
+
+        LocalTime open = LocalTime.parse(openTime, formatter);
+        LocalTime close = LocalTime.parse(closeTime, formatter);
+
+        // Validate that the start and end times fall within the opening hours
+        return !startTime.isBefore(open) && !endTime.isAfter(close);
+    }
+
+    public boolean canBeReserved(Reservation reservation, String serviceType) {
+
+        LocalTime startTime = reservation.getStartTime().toLocalTime();
+        LocalTime endTime = reservation.getEndTime().toLocalTime();
+
+        // Check if the service is a bar or a lift and adjust the validation based on business hours
+        if ("BAR".equals(serviceType)) {
+            return isWithinBusinessHours(startTime, endTime, openTimeBar, closeTimeBar);
+        } else if ("LIFT".equals(serviceType)) {
+            return isWithinBusinessHours(startTime, endTime, openTimeLift, closeTimeLift);
+        }
+        return true; // For other types of services, no specific business hour validation
     }
 
     public int updateReservation(Long id, Reservation reservation) {

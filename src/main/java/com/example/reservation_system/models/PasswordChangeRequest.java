@@ -8,7 +8,6 @@ public class PasswordChangeRequest {
     @Size(min = 8, message = "Password must be at least 8 characters long")
     private String newPassword;
 
-    
     @NotBlank(message = "Password is required")
     @Size(min = 8, message = "Password must be at least 8 characters long")
     private String oldPassword;

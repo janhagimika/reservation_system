@@ -73,7 +73,7 @@ public class AuthControllerTest {
         userService = new UserService(userRepository, passwordEncoder);
 
 
-        authController = new AuthController(userService, userRepository, authenticationManager, passwordEncoder,jwtTokenUtil,userDetailsService);
+        authController = new AuthController(userService, authenticationManager, jwtTokenUtil,userDetailsService);
 
         userService = new UserService(userRepository, passwordEncoder);
 

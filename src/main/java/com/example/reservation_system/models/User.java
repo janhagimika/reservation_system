@@ -1,8 +1,6 @@
 package com.example.reservation_system.models;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
-import org.hibernate.annotations.Fetch;
-import org.hibernate.annotations.Type;
 
 import java.util.List;
 

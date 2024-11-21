@@ -1,7 +1,6 @@
 package com.example.reservation_system.controllers;
 
 import com.example.reservation_system.services.*;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -12,19 +11,24 @@ import java.util.Map;
 @RestController
 @RequestMapping("/system")
 public class SystemController {
+    private final ReservationService reservationService;
+    private final UserService userService;
+    private final ServService servService;
+    private final LiftService liftService;
+    private final RoomService roomService;
+    private final BarService barService;
 
-    @Autowired
-    private ReservationService reservationService;
-    @Autowired
-    private UserService userService;
-    @Autowired
-    private ServService servService;
-    @Autowired
-    private LiftService liftService;
-    @Autowired
-    private RoomService roomService;
-    @Autowired
-    private BarService barService;
+    public SystemController(ReservationService reservationService,
+                            UserService userService, ServService servService,
+                            LiftService liftService, RoomService roomService,
+                            BarService barService){
+        this.reservationService = reservationService;
+        this.userService = userService;
+        this.servService = servService;
+        this.liftService = liftService;
+        this.roomService = roomService;
+        this.barService = barService;
+    }
 
     // Get current business hours
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','USER')")

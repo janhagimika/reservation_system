@@ -2,6 +2,7 @@ package com.example.reservation_system.services;
 
 import com.example.reservation_system.models.Lift;
 import com.example.reservation_system.repositories.LiftRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -24,10 +25,11 @@ public class LiftService {
         return liftRepository.findById(id);
     }
 
-    public Lift createLift(Lift lift) {
-        return liftRepository.save(lift);
+    public void createLift(Lift lift) {
+        liftRepository.save(lift);
     }
 
+    @Transactional
     public void updateLift(Long id, Lift updatedLift) {
         liftRepository.findById(id).ifPresent(existingLift -> {
             existingLift.setCapacity(updatedLift.getCapacity());

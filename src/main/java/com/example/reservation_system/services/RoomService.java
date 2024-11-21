@@ -2,6 +2,7 @@ package com.example.reservation_system.services;
 
 import com.example.reservation_system.models.Room;
 import com.example.reservation_system.repositories.RoomRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -28,6 +29,7 @@ public class RoomService {
         roomRepository.save(room);
     }
 
+    @Transactional
     public void updateRoom(Long id, Room updatedRoom) {
         roomRepository.findById(id).ifPresent(existingRoom -> {
             existingRoom.setType(updatedRoom.getType());

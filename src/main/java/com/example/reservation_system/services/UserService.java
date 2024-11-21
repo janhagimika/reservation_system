@@ -1,9 +1,10 @@
 package com.example.reservation_system.services;
 
+import com.example.reservation_system.models.PasswordChangeRequest;
 import com.example.reservation_system.models.User;
 import com.example.reservation_system.repositories.UserRepository;
 import jakarta.transaction.Transactional;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.validation.Valid;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -27,17 +28,13 @@ public class UserService {
         return userRepository.findAll();
     }
 
-    public Optional<User> getUserById(Long id) {
-        return userRepository.findById(id);
-    }
-
     public User findByUsername(String username) {
         return userRepository.findByUsername(username);
     }
 
-    public User createUser(User user) {
+    public void createUser(User user) {
         user.setPassword(passwordEncoder.encode(user.getPassword()));
-        return userRepository.save(user);
+        userRepository.save(user);
     }
 
 
@@ -57,7 +54,7 @@ public class UserService {
 
         User existingUser = existingUserOpt.get();
 
-        // Custom Validation
+        // Custom Validation, because model level @Validated validation reguires full user in requestBody
         // Username: Check if provided and if it's unique
         if (StringUtils.hasText(userDetails.getUsername()) &&
                 !userDetails.getUsername().equals(existingUser.getUsername())) {
@@ -68,7 +65,6 @@ public class UserService {
                 existingUser.setUsername(userDetails.getUsername());
             }
         }
-
         // Email: Validate format and uniqueness if updated
         if (StringUtils.hasText(userDetails.getEmail()) &&
                 !userDetails.getEmail().equals(existingUser.getEmail())) {
@@ -80,16 +76,6 @@ public class UserService {
                 existingUser.setEmail(userDetails.getEmail());
             }
         }
-
-        // Password: Ensure minimum length if updated
-        if (StringUtils.hasText(userDetails.getPassword())) {
-            if (userDetails.getPassword().length() < 8) {
-                errors.put("password", "Heslo musí mít alespoň 8 znaků.");
-            } else {
-                existingUser.setPassword(passwordEncoder.encode(userDetails.getPassword()));
-            }
-        }
-
         // First Name: Check format
         if (StringUtils.hasText(userDetails.getFirstName())) {
             if (!userDetails.getFirstName().matches("^[A-Z][a-z]*$")) {
@@ -98,7 +84,6 @@ public class UserService {
                 existingUser.setFirstName(userDetails.getFirstName());
             }
         }
-
         // Surname: Check format
         if (StringUtils.hasText(userDetails.getSurname())) {
             if (!userDetails.getSurname().matches("^[A-Z][a-z]*$")) {
@@ -107,7 +92,6 @@ public class UserService {
                 existingUser.setSurname(userDetails.getSurname());
             }
         }
-
         // Phone Number: Ensure it's exactly 9 digits
         if (StringUtils.hasText(userDetails.getPhoneNumber())) {
             if (!userDetails.getPhoneNumber().matches("^[0-9]{9}$")) {
@@ -116,7 +100,6 @@ public class UserService {
                 existingUser.setPhoneNumber(userDetails.getPhoneNumber());
             }
         }
-
         // Role: Only allow certain roles
         if (StringUtils.hasText(userDetails.getRole())) {
             if (!userDetails.getRole().matches("^(USER|MANAGER|ADMIN)$")) {
@@ -125,12 +108,10 @@ public class UserService {
                 existingUser.setRole(userDetails.getRole());
             }
         }
-
         // Save user if there are no validation errors
         if (errors.isEmpty()) {
             userRepository.save(existingUser);
         }
-
         return errors;
     }
 
@@ -138,18 +119,35 @@ public class UserService {
         userRepository.deleteById(id);
     }
 
-    public void changeUserPassword(Long userId, String newPassword) {
-        userRepository.findById(userId).ifPresent(user -> {
-            user.setPassword(passwordEncoder.encode(newPassword));
-            userRepository.save(user);
-        });
+    @Transactional
+    public String changePassword(Long userId, @Valid PasswordChangeRequest passwordChangeRequest, String authenticatedUsername) {
+        // Validate if the authenticated user matches the userId
+        User authenticatedUser = findByUsername(authenticatedUsername);
+        if (!authenticatedUser.getId().equals(userId)) {
+            throw new IllegalStateException("Neoprávněný pokus o změnu hesla.");
+        }
+
+        // Find the user by ID
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalStateException("Uživatel nenalezen."));
+
+        // Verify the old password
+        if (!passwordEncoder.matches(passwordChangeRequest.getOldPassword(), user.getPassword())) {
+            throw new IllegalStateException("Staré heslo je nesprávné.");
+        }
+
+        // Encode and set the new password
+        String encodedNewPassword = passwordEncoder.encode(passwordChangeRequest.getNewPassword());
+        user.setPassword(encodedNewPassword);
+
+        // Save the updated user
+        userRepository.save(user);
+
+        return "Heslo úspěšně změněno.";
     }
+
 
     public void deleteAllUsers() {
         userRepository.deleteAll();
-    }
-
-    public Optional<User> findUserByEmail(String email) {
-        return userRepository.findByEmail(email);
     }
 }

@@ -2,6 +2,7 @@ package com.example.reservation_system.services;
 
 import com.example.reservation_system.models.Bar;
 import com.example.reservation_system.repositories.BarRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -24,10 +25,11 @@ public class BarService {
         return barRepository.findById(id);
     }
 
-    public Bar createBar(Bar bar) {
-        return barRepository.save(bar);
+    public void createBar(Bar bar) {
+        barRepository.save(bar);
     }
 
+    @Transactional
     public void updateBar(Long id, Bar updatedBar) {
         barRepository.findById(id).ifPresent(existingBar -> {
             existingBar.setCuisineType(updatedBar.getCuisineType());
