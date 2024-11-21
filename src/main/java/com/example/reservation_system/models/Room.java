@@ -3,6 +3,10 @@ package com.example.reservation_system.models;
 import jakarta.persistence.*;
 
 @Entity
+@Table(name = "room", indexes = {
+                @Index(name = "idx_room_service_id", columnList = "service_id")
+        }
+)
 public class Room extends Serv {
 
     private String type;

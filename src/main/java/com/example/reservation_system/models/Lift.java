@@ -3,6 +3,10 @@ package com.example.reservation_system.models;
 import jakarta.persistence.*;
 
 @Entity
+@Table(name = "lift", indexes = {
+                @Index(name = "idx_lift_service_id", columnList = "service_id")
+        }
+)
 public class Lift extends Serv {
 
     private int capacity;
