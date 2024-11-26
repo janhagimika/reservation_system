@@ -121,8 +121,12 @@ public class UserService {
 
     @Transactional
     public String changePassword(Long userId, @Valid PasswordChangeRequest passwordChangeRequest, String authenticatedUsername) {
-        // Validate if the authenticated user matches the userId
+        // Validate if the authenticated user exists
         User authenticatedUser = findByUsername(authenticatedUsername);
+        if (authenticatedUser == null) {
+            throw new IllegalStateException("Neoprávněný pokus o změnu hesla.");
+        }
+        // Validate if the authenticated user matches the userId
         if (!authenticatedUser.getId().equals(userId)) {
             throw new IllegalStateException("Neoprávněný pokus o změnu hesla.");
         }

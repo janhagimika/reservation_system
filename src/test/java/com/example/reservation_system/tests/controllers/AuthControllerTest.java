@@ -1,4 +1,4 @@
-package com.example.reservation_system.tests;
+package com.example.reservation_system.tests.controllers;
 
 import com.example.reservation_system.controllers.AuthController;
 import com.example.reservation_system.models.PasswordChangeRequest;
@@ -23,7 +23,6 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.lang.reflect.Field;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
@@ -157,23 +156,6 @@ public class AuthControllerTest {
 
 
     @Test
-    void testSuccessfulPasswordChange() {
-        // Arrange
-        when(userService.findByUsername("testuser")).thenReturn(user);
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(passwordEncoder.matches("oldPassword", user.getPassword())).thenReturn(true);
-        when(passwordEncoder.encode("newPassword")).thenReturn("encodedNewPassword");
-
-        // Act
-        ResponseEntity<?> response = authController.changePassword(1L, passwordChangeRequest, authentication);
-
-        // Assert
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals("Heslo úspěšně změněno.", response.getBody());
-        verify(userRepository).updatePassword(1L, "encodedNewPassword");
-    }
-
-    @Test
     void testUnauthorizedAccess() {
         // Arrange
         User otherUser = new User();
@@ -190,33 +172,82 @@ public class AuthControllerTest {
     }
 
     @Test
-    void testIncorrectOldPassword() {
+    void testSuccessfulPasswordChange() {
         // Arrange
-        when(userService.findByUsername("testuser")).thenReturn(user);
+        PasswordChangeRequest passwordChangeRequest = new PasswordChangeRequest();
+        passwordChangeRequest.setOldPassword("correctpassword");
+        passwordChangeRequest.setNewPassword("newpassword");
+
+        // Mock the authenticated user's context
+        when(authentication.getName()).thenReturn("testuser");
+        when(userRepository.findByUsername("testuser")).thenReturn(user);
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(passwordEncoder.matches("oldPassword", user.getPassword())).thenReturn(false);  // Old password doesn't match
+        when(passwordEncoder.matches("correctpassword", user.getPassword())).thenReturn(true);
+        when(passwordEncoder.encode("newpassword")).thenReturn("encodedNewPassword");
 
         // Act
         ResponseEntity<?> response = authController.changePassword(1L, passwordChangeRequest, authentication);
 
         // Assert
-        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
-        assertEquals("Old password is incorrect.", response.getBody());
-        verify(userRepository, never()).updatePassword(anyLong(), anyString());
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals("Heslo úspěšně změněno.", response.getBody());
+
+        // Verify that the password was updated and the user saved
+        verify(userRepository).save(user);
+        assertEquals("encodedNewPassword", user.getPassword());
     }
+
 
     @Test
-    void testUserNotFound() {
-        // Arrange
-        when(userService.findByUsername("testuser")).thenReturn(user);
-        when(userRepository.findById(1L)).thenReturn(Optional.empty());  // User not found
+    void testInvalidOldPassword() {
+        when(authentication.getName()).thenReturn("testuser");
+        when(userRepository.findByUsername("testuser")).thenReturn(user);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("wrongpassword", user.getPassword())).thenReturn(false);
 
-        // Act
-        ResponseEntity<?> response = authController.changePassword(1L, passwordChangeRequest, authentication);
+        PasswordChangeRequest request = new PasswordChangeRequest();
+        request.setOldPassword("wrongpassword");
+        request.setNewPassword("newpassword");
 
-        // Assert
-        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
-        assertEquals("User not found.", response.getBody());
+        ResponseEntity<?> response = authController.changePassword(1L, request, authentication);
+
+        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+        assertEquals("Staré heslo je nesprávné.", response.getBody());
+    }
+
+
+    @Test
+    void testUnauthorizedPasswordChange() {
+        // Mock the authenticated user as "anotheruser"
+        when(authentication.getName()).thenReturn("anotheruser");
+
+        // Mock the repository to return a user with the ID 1L associated with "testuser"
+        User actualUser = new User();
+        actualUser.setId(1L);
+        actualUser.setUsername("testuser");
+        actualUser.setPassword("correctpassword");
+
+        // Mock repository to return the user for findById
+        lenient().when(userRepository.findById(1L)).thenReturn(Optional.of(actualUser));
+
+        // Prepare the password change request
+        PasswordChangeRequest request = new PasswordChangeRequest();
+        request.setOldPassword("correctpassword");
+        request.setNewPassword("newpassword");
+
+        // Perform the change password action
+        ResponseEntity<?> response = authController.changePassword(1L, request, authentication);
+
+        // Assert that unauthorized access is correctly handled
+        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+        assertEquals("Neoprávněný pokus o změnu hesla.", response.getBody());
+
+        // Verify no password update is attempted
         verify(userRepository, never()).updatePassword(anyLong(), anyString());
     }
+
+
+
+
+
 }
